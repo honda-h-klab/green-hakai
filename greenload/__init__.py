@@ -175,6 +175,7 @@ class Action(object):
         #: 全リクエストに付与するクエリー文字列
         self.query_params = conf.get('query_params', {}).items()
         self.headers = conf.get('headers', {})
+        self.headers.update(action.get('headers', {}))
         self.content = action.get('content')
         self.content_type = action.get('content_type')
         self.post_params = action.get('post_params')
@@ -243,6 +244,8 @@ class Action(object):
                 header['Cookie'] = '; '.join([h + '=' + v for h, v in cookies.items()])
 
             debug("%s %s %s", method, real_path, body[:20])
+            for k,v in header.iteritems():
+                debug("[Header] %s: %s", k, v)
             t = time.time()
             try:
                 timeout = False
@@ -269,7 +272,7 @@ class Action(object):
             PATH_TIME[path] += t
             PATH_CNT[path] += 1
 
-            if response.status_code // 10 != 30:  # isn't redirect
+            if response.status_code // 10 != 30 or response.status_code == 304:  # isn't redirect
                 break
 
             # handle redirects.
@@ -286,7 +289,7 @@ class Action(object):
 
         if timeout:
             succ = False
-        elif not (response and response.status_code // 10 == 20):
+        elif not (response and (response.status_code // 10 == 20 or response.status_code == 304)):
             succ = False
         else:
             succ = self._scan(response_body, vars_)
